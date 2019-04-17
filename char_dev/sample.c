@@ -16,6 +16,7 @@
 #include <linux/kernel.h>         // Contains types, macros, functions for the kernel
 #include <linux/fs.h>             // Header for the Linux file system support
 #include <linux/uaccess.h>          // Required for the copy to user function
+
 #define  DEVICE_NAME "ebbchar"    ///< The device will appear at /dev/ebbchar using this value
 #define  CLASS_NAME  "ebb"        ///< The device class -- this is a character device driver
  
@@ -24,6 +25,18 @@ MODULE_AUTHOR("Derek Molloy");    ///< The author -- visible when you use modinf
 MODULE_DESCRIPTION("A simple Linux char driver for the BBB");  ///< The description -- see modinfo
 MODULE_VERSION("0.1");            ///< A version number to inform users
  
+/*
+ * Ioctl definitions
+ */
+
+/* Use 'k' as magic number */
+#define DEV_IOC_MAGIC  'k'
+/* Please use a different 8-bit number in your code */
+
+#define DEV_IOCRESET    _IO(DEV_IOC_MAGIC, 0)
+#define DEV_SEND_BUFFER _IOW(DEV_IOC_MAGIC,  1, int)
+#define DEV_IOC_MAXNR	1
+
 static int    majorNumber;                  ///< Stores the device number -- determined automatically
 static char   message[256] = {0};           ///< Memory for the string that is passed from userspace
 static short  size_of_message;              ///< Used to remember the size of the string stored
@@ -36,6 +49,7 @@ static int     dev_open(struct inode *, struct file *);
 static int     dev_release(struct inode *, struct file *);
 static ssize_t dev_read(struct file *, char *, size_t, loff_t *);
 static ssize_t dev_write(struct file *, const char *, size_t, loff_t *);
+static long dev_ioctl(struct file *filp,unsigned int cmd, unsigned long arg);
  
 /** @brief Devices are represented as file structure in the kernel. The file_operations structure from
  *  /linux/fs.h lists the callback functions that you wish to associated with your file operations
@@ -46,6 +60,7 @@ static struct file_operations fops =
    .open = dev_open,
    .read = dev_read,
    .write = dev_write,
+	.unlocked_ioctl = dev_ioctl,
    .release = dev_release,
 };
  
@@ -148,6 +163,20 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
    return len;
 }
  
+static long dev_ioctl(struct file *filp,unsigned int cmd, unsigned long arg) {
+	int err = 0;
+	if (_IOC_TYPE(cmd) != DEV_IOC_MAGIC) return -ENOTTY;
+	if (_IOC_NR(cmd) > DEV_IOC_MAXNR) return -ENOTTY;
+	
+	if (_IOC_DIR(cmd) & _IOC_READ)
+        err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+    else if (_IOC_DIR(cmd) & _IOC_WRITE)
+        err =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+    if (err) return -EFAULT;
+
+	return 0;
+}
+
 /** @brief The device release function that is called whenever the device is closed/released by
  *  the userspace program
  *  @param inodep A pointer to an inode object (defined in linux/fs.h)
