@@ -37,7 +37,7 @@ static struct file_operations vd_fops = {
 };
  
 int __init virtual_device_init(void) {
-    if(register_chrdev(250, "virtual_device", &vd_fops) < 0 )
+    if(register_chrdev(240, "sample", &vd_fops) < 0 )
         printk(KERN_ALERT "driver init failed\n");
     else
         printk(KERN_ALERT "driver init successful\n");
@@ -48,7 +48,7 @@ int __init virtual_device_init(void) {
 }
  
 void __exit virtual_device_exit(void) {
-    unregister_chrdev(250, "virtual_device");
+    unregister_chrdev(240, "sample");
     printk(KERN_ALERT "driver cleanup successful\n");
     kfree(buffer);
 }
