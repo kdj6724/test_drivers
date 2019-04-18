@@ -34,9 +34,10 @@ MODULE_VERSION("0.1");            ///< A version number to inform users
 /* Please use a different 8-bit number in your code */
 
 #define DEV_IOCRESET    _IO(DEV_IOC_MAGIC, 0)
-#define DEV_SEND_BUFFER _IOW(DEV_IOC_MAGIC,  1, int)
+#define DEV_READ_KBUFFER _IOR(DEV_IOC_MAGIC,  1, int)
 #define DEV_IOC_MAXNR	1
 
+char buffer[1024] = {0,};
 static int    majorNumber;                  ///< Stores the device number -- determined automatically
 static char   message[256] = {0};           ///< Memory for the string that is passed from userspace
 static short  size_of_message;              ///< Used to remember the size of the string stored
@@ -173,6 +174,15 @@ static long dev_ioctl(struct file *filp,unsigned int cmd, unsigned long arg) {
     else if (_IOC_DIR(cmd) & _IOC_WRITE)
         err =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
     if (err) return -EFAULT;
+
+	switch(cmd) {
+	case DEV_IOCRESET:
+		break;
+	case DEV_READ_KBUFFER:
+		memset(buffer, 0x31, sizeof(buffer));
+		copy_to_user((char *)arg, buffer, sizeof(buffer));
+		break;
+	}
 
 	return 0;
 }
